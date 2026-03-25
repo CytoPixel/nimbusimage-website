@@ -1,0 +1,43 @@
+# NimbusImage
+
+> NimbusImage is an open-source, cloud-based microscopy image analysis platform for life scientists. Built by the Raj Lab at the University of Pennsylvania in collaboration with Kitware, it runs entirely in the browser with no installation required. Published in Nature Methods.
+
+NimbusImage is developed by CytoPixel Software (solo founder Arjun Raj). It is licensed under Apache 2.0 and can be self-hosted. The hosted version is available at https://app.nimbusimage.com.
+
+Key capabilities:
+- **Cell segmentation** using Cellpose, SAM (Segment Anything), and Piscis
+- **Spot detection** for RNA FISH, protein aggregates, and spatial analysis
+- **Object tracking** across time-lapse images with lineage tracing
+- **Quantitative measurement** of morphology, fluorescence intensity, and spatial relationships
+- **3D and multichannel** image processing with colocalization analysis
+- **Batch analysis** with automated workflows and custom ML model integration
+- **Large image support** — handles files that won't fit in local memory via Girder's large_image plugin
+
+NimbusImage is interactive, not just a pipeline. Users can see what algorithms are doing in real-time, click to correct segmentation errors, and inject domain expertise into results.
+
+## Docs
+
+- [NimbusImage documentation](https://docs.nimbusimage.com): Full user documentation including quick start guide, tutorials, and API reference
+- [Quick start guide](https://docs.nimbusimage.com/quick-start): Get started analyzing images in minutes
+
+## Source Code
+
+- [NimbusImage GitHub repository](https://github.com/arjunrajlaboratory/NimbusImage): Open-source codebase, Apache 2.0 licensed
+
+## Plans
+
+- **Individual**: Full access with monthly or yearly options for independent researchers, postdocs, and students
+- **Small Group**: Per-user discounts on yearly subscriptions for labs and collaborative teams
+- **Institutional**: Flat-fee licensing for research centers based on user count and storage
+
+## Downloads
+
+Desktop app available for dedicated performance (same cloud account, same data):
+- [Windows](https://nimbusimage-app-downloads.s3.us-east-1.amazonaws.com/NimbusImage-1.0.1.Setup.exe)
+- [macOS (Apple Silicon)](https://nimbusimage-app-downloads.s3.us-east-1.amazonaws.com/NimbusImage-1.0.1-arm64.dmg)
+- [Linux](https://nimbusimage-app-downloads.s3.us-east-1.amazonaws.com/nimbusimage_1.0.1_amd64.deb)
+
+## Community
+
+- [Image.sc forum](https://forum.image.sc/): Community support forum (tag with #nimbusimage)
+- [Contact support](mailto:support@cytopixel.com): Customer support email

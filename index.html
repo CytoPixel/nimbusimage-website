@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NimbusImage — Cloud-based microscopy analysis</title>
+<meta name="description" content="NimbusImage is an open-source, cloud-based image analysis platform for life science researchers. Segment cells, detect spots, track objects — all from your browser.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --nimbus-orange: #E8763A;
+    --nimbus-orange-hover: #D4682F;
+    --nimbus-orange-light: #F4A76C;
+    --nimbus-orange-glow: rgba(232, 118, 58, 0.10);
+    --nimbus-orange-glow-strong: rgba(232, 118, 58, 0.18);
+    --nimbus-dark: #151515;
+    --nimbus-charcoal: #1E1E1E;
+    --nimbus-gray-dark: #444;
+    --nimbus-gray: #6B6B6B;
+    --nimbus-gray-light: #999;
+    --nimbus-light: #F5F3EF;
+    --nimbus-cream: #FAF8F5;
+    --nimbus-white: #FFFFFF;
+    --nimbus-border: rgba(0,0,0,0.07);
+    --nimbus-border-light: rgba(0,0,0,0.04);
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Outfit', -apple-system, sans-serif;
+    --max-width: 1200px;
+    --section-padding: clamp(80px, 10vw, 140px);
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    color: var(--nimbus-dark);
+    background: var(--nimbus-cream);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* ─── NOISE TEXTURE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 0 clamp(24px, 4vw, 48px);
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(250, 248, 245, 0.8);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border-bottom: 1px solid var(--nimbus-border-light);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  nav.scrolled {
+    background: rgba(250, 248, 245, 0.95);
+    box-shadow: 0 1px 20px rgba(0,0,0,0.04);
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--nimbus-dark);
+  }
+
+  .nav-logo svg.logo-icon { height: 32px; width: auto; margin-top: 2px; }
+
+  .nav-logo .bird {
+    transform-origin: var(--ox) var(--oy);
+  }
+
+  .nav-logo:hover .bird-1 {
+    animation: flap-top 1.8s ease-in-out infinite;
+  }
+
+  .nav-logo:hover .bird-2 {
+    animation: flap-bottom 1.8s ease-in-out infinite 0.4s;
+  }
+
+  @keyframes flap-top {
+    0%, 100% { transform: rotate(-25deg) scaleY(1) rotate(25deg); }
+    25% { transform: rotate(-25deg) scaleY(0.7) rotate(25deg); }
+    50% { transform: rotate(-25deg) scaleY(1.05) rotate(25deg); }
+    75% { transform: rotate(-25deg) scaleY(0.85) rotate(25deg); }
+  }
+
+  @keyframes flap-bottom {
+    0%, 100% { transform: scaleY(1); }
+    25% { transform: scaleY(0.7); }
+    50% { transform: scaleY(1.05); }
+    75% { transform: scaleY(0.85); }
+  }
+
+  .nav-logo span {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variation-settings: 'opsz' 36;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    text-decoration: none;
+    color: var(--nimbus-gray);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 8px;
+    transition: all 0.2s;
+    letter-spacing: 0.005em;
+  }
+
+  .nav-links a:hover {
+    color: var(--nimbus-dark);
+    background: rgba(0,0,0,0.03);
+  }
+
+  .nav-cta {
+    background: var(--nimbus-dark) !important;
+    color: var(--nimbus-white) !important;
+    padding: 8px 20px !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    letter-spacing: 0.01em !important;
+  }
+
+  .nav-cta:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18) !important;
+    background: var(--nimbus-dark) !important;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    padding-top: calc(68px + var(--section-padding));
+    padding-bottom: var(--section-padding);
+    padding-left: clamp(24px, 4vw, 48px);
+    padding-right: clamp(24px, 4vw, 48px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Ambient glow */
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -300px;
+    right: -200px;
+    width: 900px;
+    height: 900px;
+    background: radial-gradient(circle, var(--nimbus-orange-glow) 0%, transparent 60%);
+    pointer-events: none;
+    animation: heroGlow 12s ease-in-out infinite alternate;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -200px;
+    left: -300px;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(232, 118, 58, 0.04) 0%, transparent 60%);
+    pointer-events: none;
+    animation: heroGlow 10s ease-in-out 2s infinite alternate-reverse;
+  }
+
+  @keyframes heroGlow {
+    0% { opacity: 0.5; transform: translate(0, 0) scale(1); }
+    100% { opacity: 1; transform: translate(-30px, 30px) scale(1.05); }
+  }
+
+  .hero-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 72px;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--nimbus-orange-glow);
+    border: 1px solid rgba(232, 118, 58, 0.15);
+    padding: 7px 18px 7px 14px;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--nimbus-orange);
+    margin-bottom: 32px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .hero-badge::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    background: var(--nimbus-orange);
+    border-radius: 50%;
+    animation: pulse 2.5s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.6rem, 4.5vw, 4rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin-bottom: 24px;
+    color: var(--nimbus-dark);
+    font-weight: 600;
+    font-variation-settings: 'opsz' 144;
+  }
+
+  .hero h1 em {
+    color: var(--nimbus-orange);
+    font-style: normal;
+  }
+
+  .hero-sub {
+    font-size: 1.1rem;
+    color: var(--nimbus-gray);
+    max-width: 460px;
+    line-height: 1.7;
+    margin-bottom: 40px;
+    font-weight: 400;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  /* ─── HERO FLOATING DOTS (microscopy vibe) ─── */
+  .hero-dots {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .hero-dot {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0;
+    animation: floatDot 20s ease-in-out infinite;
+  }
+
+  .hero-dot:nth-child(1) { width: 6px; height: 6px; background: rgba(232,118,58,0.25); top: 18%; left: 8%; animation-delay: 0s; animation-duration: 18s; }
+  .hero-dot:nth-child(2) { width: 4px; height: 4px; background: rgba(60,210,120,0.3); top: 72%; left: 3%; animation-delay: 3s; animation-duration: 22s; }
+  .hero-dot:nth-child(3) { width: 8px; height: 8px; background: rgba(232,118,58,0.15); top: 35%; left: 48%; animation-delay: 6s; animation-duration: 25s; }
+  .hero-dot:nth-child(4) { width: 5px; height: 5px; background: rgba(60,210,120,0.2); top: 85%; left: 55%; animation-delay: 2s; animation-duration: 20s; }
+  .hero-dot:nth-child(5) { width: 3px; height: 3px; background: rgba(255,90,70,0.3); top: 25%; left: 92%; animation-delay: 8s; animation-duration: 16s; }
+  .hero-dot:nth-child(6) { width: 7px; height: 7px; background: rgba(232,118,58,0.12); top: 60%; left: 95%; animation-delay: 4s; animation-duration: 24s; }
+
+  @keyframes floatDot {
+    0%, 100% { opacity: 0; transform: translateY(0) scale(0.8); }
+    15% { opacity: 1; }
+    50% { opacity: 0.8; transform: translateY(-30px) scale(1.2); }
+    85% { opacity: 1; }
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 26px;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border: none;
+    font-family: var(--font-body);
+    letter-spacing: 0.005em;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary {
+    background: var(--nimbus-orange);
+    color: white;
+    box-shadow: 0 2px 16px rgba(232, 118, 58, 0.25), 0 1px 3px rgba(232, 118, 58, 0.15);
+  }
+
+  .btn-primary:hover {
+    background: var(--nimbus-orange-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(232, 118, 58, 0.35), 0 2px 6px rgba(232, 118, 58, 0.2);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-secondary {
+    background: var(--nimbus-white);
+    color: var(--nimbus-dark);
+    border: 1px solid var(--nimbus-border);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  }
+
+  .btn-secondary:hover {
+    background: var(--nimbus-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+
+  /* ─── HERO VISUAL (App Mockup) ─── */
+  .hero-visual {
+    position: relative;
+    background: var(--nimbus-white);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--nimbus-border);
+    overflow: hidden;
+    box-shadow:
+      0 40px 80px -20px rgba(0,0,0,0.12),
+      0 8px 20px rgba(0,0,0,0.04),
+      inset 0 1px 0 rgba(255,255,255,0.8);
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.6s;
+    transform: perspective(1200px) rotateY(-3deg) rotateX(2deg);
+  }
+
+  .hero-visual:hover {
+    transform: perspective(1200px) rotateY(-1deg) rotateX(1deg) translateY(-6px);
+    box-shadow:
+      0 50px 100px -20px rgba(0,0,0,0.15),
+      0 12px 24px rgba(0,0,0,0.06),
+      inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+
+  .hero-visual-inner {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .hv-toolbar {
+    height: 38px;
+    background: var(--nimbus-light);
+    border-bottom: 1px solid var(--nimbus-border);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .hv-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ddd;
+  }
+
+  .hv-dot:nth-child(1) { background: #FF6259; }
+  .hv-dot:nth-child(2) { background: #FFBF2F; }
+  .hv-dot:nth-child(3) { background: #29CE42; }
+
+  .hero-visual img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* ─── PILLARS ─── */
+  .pillars {
+    padding: 0 clamp(24px, 4vw, 48px);
+    padding-bottom: var(--section-padding);
+  }
+
+  .pillars-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .pillar {
+    background: var(--nimbus-white);
+    border: 1px solid var(--nimbus-border);
+    border-radius: var(--radius-lg);
+    padding: 40px 32px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .pillar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--nimbus-orange), var(--nimbus-orange-light));
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .pillar:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.02);
+  }
+
+  .pillar:hover::before { opacity: 1; }
+
+  .pillar-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--nimbus-orange-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    color: var(--nimbus-orange);
+    transition: all 0.3s;
+  }
+
+  .pillar:hover .pillar-icon {
+    background: var(--nimbus-orange);
+    color: white;
+    transform: scale(1.1) rotate(-4deg);
+    box-shadow: 0 4px 16px rgba(232, 118, 58, 0.25);
+  }
+
+  .pillar h3 {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    font-variation-settings: 'opsz' 36;
+  }
+
+  .pillar p {
+    color: var(--nimbus-gray);
+    font-size: 0.92rem;
+    line-height: 1.7;
+    font-weight: 400;
+  }
+
+  /* ─── SECTION LABELS ─── */
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--nimbus-orange);
+    margin-bottom: 16px;
+    font-family: var(--font-body);
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 3.5vw, 3rem);
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    font-variation-settings: 'opsz' 72;
+  }
+
+  /* ─── FEATURES (Dark section) ─── */
+  .features {
+    padding: var(--section-padding) clamp(24px, 4vw, 48px);
+    background: var(--nimbus-dark);
+    color: var(--nimbus-white);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .features::before {
+    content: '';
+    position: absolute;
+    top: -48px;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: var(--nimbus-dark);
+    mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1440 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 48h1440V24C1200 0 960 0 720 24S240 48 0 24z' fill='white'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1440 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 48h1440V24C1200 0 960 0 720 24S240 48 0 24z' fill='white'/%3E%3C/svg%3E");
+    mask-size: 100% 100%;
+    -webkit-mask-size: 100% 100%;
+  }
+
+  /* Subtle grid pattern */
+  .features::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  .features-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .features .section-title {
+    margin-bottom: 64px;
+    max-width: 560px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .feature-card {
+    background: var(--nimbus-charcoal);
+    padding: 40px 32px;
+    position: relative;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .feature-card:first-child { border-radius: var(--radius-md) 0 0 0; }
+  .feature-card:nth-child(3) { border-radius: 0 var(--radius-md) 0 0; }
+  .feature-card:nth-child(4) { border-radius: 0 0 0 var(--radius-md); }
+  .feature-card:last-child { border-radius: 0 0 var(--radius-md) 0; }
+
+  .feature-card:hover {
+    background: #282828;
+    transform: scale(1.02);
+    z-index: 2;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .feature-number {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    color: rgba(232, 118, 58, 0.5);
+    line-height: 1;
+    margin-bottom: 16px;
+    font-weight: 300;
+    font-variation-settings: 'opsz' 144;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .feature-card:hover .feature-number {
+    color: rgba(232, 118, 58, 0.7);
+    transform: translateX(4px);
+  }
+
+  .feature-card h4 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    margin-bottom: 10px;
+    color: var(--nimbus-white);
+    font-weight: 600;
+    font-variation-settings: 'opsz' 36;
+    letter-spacing: -0.005em;
+  }
+
+  .feature-card p {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.88rem;
+    line-height: 1.65;
+    font-weight: 400;
+  }
+
+  /* ─── PUBLICATION ─── */
+  .publication {
+    padding: var(--section-padding) clamp(24px, 4vw, 48px);
+    background: var(--nimbus-cream);
+  }
+
+  .pub-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 56px;
+    padding: 48px 56px;
+    background: var(--nimbus-white);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--nimbus-border);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.03);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pub-inner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, var(--nimbus-orange), var(--nimbus-orange-light));
+    border-radius: 4px 0 0 4px;
+  }
+
+  .pub-inner::after {
+    content: '\201C';
+    position: absolute;
+    top: -8px;
+    right: 40px;
+    font-family: var(--font-display);
+    font-size: 8rem;
+    color: rgba(232, 118, 58, 0.06);
+    line-height: 1;
+    pointer-events: none;
+    font-variation-settings: 'opsz' 144;
+  }
+
+  .pub-journal {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-right: 56px;
+    border-right: 1px solid var(--nimbus-border);
+  }
+
+  .pub-journal-name {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-style: italic;
+    color: var(--nimbus-gray);
+    font-variation-settings: 'opsz' 36;
+  }
+
+  .pub-journal-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--nimbus-orange);
+    background: var(--nimbus-orange-glow);
+    padding: 4px 14px;
+    border-radius: 100px;
+  }
+
+  .pub-content h3 {
+    font-family: var(--font-display);
+    font-size: 1.45rem;
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    font-variation-settings: 'opsz' 36;
+  }
+
+  .pub-content p {
+    color: var(--nimbus-gray);
+    line-height: 1.7;
+    font-size: 0.95rem;
+  }
+
+  /* ─── PLANS ─── */
+  .plans {
+    padding: var(--section-padding) clamp(24px, 4vw, 48px);
+  }
+
+  .plans-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .plans .section-title {
+    margin-bottom: 14px;
+  }
+
+  .plans .section-sub {
+    color: var(--nimbus-gray);
+    font-size: 1.05rem;
+    margin-bottom: 56px;
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.65;
+  }
+
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    text-align: left;
+  }
+
+  .plan-card {
+    background: var(--nimbus-white);
+    border: 1px solid var(--nimbus-border);
+    border-radius: var(--radius-lg);
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .plan-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.06);
+  }
+
+  .plan-card.featured {
+    border-color: var(--nimbus-orange);
+    box-shadow: 0 0 0 1px var(--nimbus-orange), 0 8px 32px rgba(232, 118, 58, 0.08);
+    position: relative;
+  }
+
+  .plan-card.featured:hover {
+    box-shadow: 0 0 0 1px var(--nimbus-orange), 0 20px 56px rgba(232, 118, 58, 0.12);
+  }
+
+  .plan-card.featured::after {
+    content: 'Most popular';
+    position: absolute;
+    top: -12px;
+    left: 32px;
+    background: var(--nimbus-orange);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 16px;
+    border-radius: 100px;
+    box-shadow: 0 2px 8px rgba(232, 118, 58, 0.25);
+  }
+
+  .plan-name {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-variation-settings: 'opsz' 36;
+  }
+
+  .plan-desc {
+    color: var(--nimbus-gray);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 32px;
+    flex: 1;
+  }
+
+  .plan-cta {
+    display: block;
+    text-align: center;
+    padding: 13px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.005em;
+  }
+
+  .plan-card:not(.featured) .plan-cta {
+    background: var(--nimbus-light);
+    color: var(--nimbus-dark);
+  }
+
+  .plan-card:not(.featured) .plan-cta:hover {
+    background: #e8e5e0;
+  }
+
+  .plan-card.featured .plan-cta {
+    background: var(--nimbus-orange);
+    color: white;
+    box-shadow: 0 2px 10px rgba(232, 118, 58, 0.2);
+  }
+
+  .plan-card.featured .plan-cta:hover {
+    box-shadow: 0 6px 20px rgba(232, 118, 58, 0.35);
+    transform: translateY(-1px);
+  }
+
+  /* ─── DOWNLOADS / OPEN SOURCE ─── */
+  .info-section {
+    padding: var(--section-padding) clamp(24px, 4vw, 48px);
+  }
+
+  .info-section:nth-of-type(even) {
+    background: var(--nimbus-light);
+  }
+
+  .info-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+  }
+
+  .info-inner .section-title {
+    margin-bottom: 20px;
+    line-height: 1.15;
+  }
+
+  .info-inner > div > p {
+    color: var(--nimbus-gray);
+    font-size: 1rem;
+    line-height: 1.75;
+    margin-bottom: 16px;
+  }
+
+  .values-list {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .value-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .value-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--nimbus-white);
+    border: 1px solid var(--nimbus-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--nimbus-orange);
+    font-size: 1.1rem;
+    transition: all 0.3s;
+  }
+
+  .value-item:hover .value-icon {
+    background: var(--nimbus-orange-glow);
+    border-color: rgba(232, 118, 58, 0.15);
+    transform: scale(1.08);
+  }
+
+  .value-item h4 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin-bottom: 3px;
+    letter-spacing: -0.005em;
+  }
+
+  .value-item p {
+    font-size: 0.86rem !important;
+    margin-bottom: 0 !important;
+    color: var(--nimbus-gray);
+  }
+
+  /* ─── FINAL CTA ─── */
+  .final-cta {
+    padding: var(--section-padding) clamp(24px, 4vw, 48px);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .final-cta::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 700px;
+    height: 700px;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(232, 118, 58, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 70% 60%, rgba(60, 210, 120, 0.04) 0%, transparent 50%);
+    pointer-events: none;
+    animation: ctaGlow 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes ctaGlow {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  }
+
+  .final-cta-inner {
+    max-width: 580px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .final-cta h2 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 3.5vw, 2.8rem);
+    letter-spacing: -0.025em;
+    margin-bottom: 16px;
+    line-height: 1.12;
+    font-weight: 600;
+    font-variation-settings: 'opsz' 72;
+  }
+
+  .final-cta p {
+    color: var(--nimbus-gray);
+    font-size: 1.05rem;
+    line-height: 1.65;
+    margin-bottom: 36px;
+  }
+
+  .final-cta .hero-actions {
+    justify-content: center;
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    padding: 40px clamp(24px, 4vw, 48px);
+    border-top: 1px solid var(--nimbus-border);
+    background: var(--nimbus-cream);
+  }
+
+  .footer-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .footer-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--nimbus-gray);
+    font-size: 0.85rem;
+  }
+
+  .footer-left svg { height: 20px; width: auto; }
+
+  .footer-links {
+    display: flex;
+    gap: 24px;
+    list-style: none;
+  }
+
+  .footer-links a {
+    color: var(--nimbus-gray-light);
+    text-decoration: none;
+    font-size: 0.82rem;
+    transition: color 0.2s;
+    font-weight: 500;
+  }
+
+  .footer-links a:hover { color: var(--nimbus-dark); }
+
+  /* ─── MOBILE NAV ─── */
+  .nav-toggle {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    position: relative;
+  }
+
+  .nav-toggle span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--nimbus-dark);
+    position: absolute;
+    left: 6px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 2px;
+  }
+
+  .nav-toggle span:nth-child(1) { top: 9px; }
+  .nav-toggle span:nth-child(2) { top: 15px; }
+  .nav-toggle span:nth-child(3) { top: 21px; }
+
+  .nav-toggle.active span:nth-child(1) { top: 15px; transform: rotate(45deg); }
+  .nav-toggle.active span:nth-child(2) { opacity: 0; }
+  .nav-toggle.active span:nth-child(3) { top: 15px; transform: rotate(-45deg); }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .hero-inner {
+      grid-template-columns: 1fr;
+      gap: 48px;
+    }
+
+    .hero-visual { max-width: 560px; }
+
+    .pillars-inner,
+    .features-grid,
+    .plans-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .info-inner { grid-template-columns: 1fr; gap: 40px; }
+
+    .feature-card { border-radius: var(--radius-md) !important; }
+    .features-grid { gap: 12px; }
+
+    .pub-inner {
+      flex-direction: column;
+      text-align: center;
+      padding: 36px 28px;
+    }
+
+    .pub-journal {
+      padding-right: 0;
+      padding-bottom: 20px;
+      border-right: none;
+      border-bottom: 1px solid var(--nimbus-border);
+    }
+
+    .pub-inner::before { display: none; }
+
+    .nav-links {
+      display: none;
+      position: fixed;
+      top: 68px;
+      left: 0;
+      right: 0;
+      background: rgba(250, 248, 245, 0.98);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      flex-direction: column;
+      padding: 20px 24px;
+      gap: 4px;
+      border-bottom: 1px solid var(--nimbus-border);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.06);
+    }
+
+    .nav-links.open {
+      display: flex;
+    }
+
+    .nav-links a {
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      border-radius: 10px;
+    }
+
+    .nav-toggle { display: block; }
+  }
+
+  @media (max-width: 480px) {
+    .hero h1 { font-size: 2.2rem; }
+    .hero-actions { flex-direction: column; }
+    .btn { width: 100%; justify-content: center; }
+  }
+
+  /* ─── HERO ENTRANCE ─── */
+  .hero .hero-badge { animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both; }
+  .hero h1 { animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both; }
+  .hero .hero-sub { animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both; }
+  .hero .hero-actions { animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both; }
+  .hero .hero-visual { animation: heroVisualEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both; }
+
+  @keyframes heroEntrance {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes heroVisualEntrance {
+    from { opacity: 0; transform: perspective(1200px) rotateY(-6deg) rotateX(4deg) translateY(40px); }
+    to { opacity: 1; transform: perspective(1200px) rotateY(-3deg) rotateX(2deg) translateY(0); }
+  }
+
+  /* ─── ANIMATIONS ─── */
+  .fade-up {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .fade-up.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Stagger children */
+  .stagger > .fade-up:nth-child(1) { transition-delay: 0s; }
+  .stagger > .fade-up:nth-child(2) { transition-delay: 0.08s; }
+  .stagger > .fade-up:nth-child(3) { transition-delay: 0.16s; }
+  .stagger > .fade-up:nth-child(4) { transition-delay: 0.24s; }
+  .stagger > .fade-up:nth-child(5) { transition-delay: 0.32s; }
+  .stagger > .fade-up:nth-child(6) { transition-delay: 0.40s; }
+
+  /* ─── COOKIE BANNER ─── */
+  .cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    transform: translateY(100%);
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .cookie-banner.visible {
+    transform: translateY(0);
+  }
+
+  .cookie-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 16px clamp(24px, 4vw, 48px) 16px;
+  }
+
+  .cookie-card {
+    background: var(--nimbus-white);
+    border: 1px solid var(--nimbus-border);
+    border-radius: var(--radius-md);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .cookie-text {
+    font-size: 0.86rem;
+    color: var(--nimbus-gray);
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .cookie-text a {
+    color: var(--nimbus-dark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .cookie-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .cookie-btn {
+    padding: 8px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    letter-spacing: 0.005em;
+  }
+
+  .cookie-btn-accept {
+    background: var(--nimbus-dark);
+    color: var(--nimbus-white);
+  }
+
+  .cookie-btn-accept:hover {
+    background: #2a2a2a;
+    transform: translateY(-1px);
+  }
+
+  .cookie-btn-decline {
+    background: var(--nimbus-light);
+    color: var(--nimbus-gray-dark);
+  }
+
+  .cookie-btn-decline:hover {
+    background: #e8e5e0;
+  }
+
+  @media (max-width: 600px) {
+    .cookie-card {
+      flex-direction: column;
+      align-items: stretch;
+      text-align: center;
+    }
+    .cookie-actions { justify-content: center; }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+    .fade-up { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <svg class="logo-icon" viewBox="0 0 652 397" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M145 253H529V393H145V253Z" fill="#E68A82"/>
+      <path d="M517.5 132C589.573 132 648 190.427 648 262.5C648 334.573 589.573 393 517.5 393C445.427 393 387 334.573 387 262.5C387 190.427 445.427 132 517.5 132Z" fill="#E68A82" stroke="#E4827A" stroke-width="8"/>
+      <path d="M316 4C408.232 4 483 78.7684 483 171C483 263.232 408.232 338 316 338C223.768 338 149 263.232 149 171C149 78.7684 223.768 4 316 4Z" fill="#E68A82" stroke="#E2756D" stroke-width="8"/>
+      <path d="M144.5 112C222.096 112 285 174.904 285 252.5C285 281.272 276.356 308.013 261.523 330.282C236.337 368.097 193.326 393 144.5 393C66.904 393 4 330.096 4 252.5C4 174.904 66.904 112 144.5 112Z" fill="#E68A82" stroke="#DE5F58" stroke-width="8"/>
+      <path class="bird bird-1" style="--ox:275px;--oy:112.5px" d="M296.5 65C278.487 80.4216 275.786 105.031 275 112.5C261.06 101.512 237.881 100.75 228 100.5" stroke="black" stroke-width="8" stroke-linecap="round"/>
+      <path class="bird bird-2" style="--ox:492.5px;--oy:341.5px" d="M445.5 319C454.5 320.667 476.5 327.5 492.5 341.5C505.7 323.5 528 315.333 537.5 313.5" stroke="black" stroke-width="8" stroke-linecap="round"/>
+      <path d="M316 4C408.232 4 483 78.7684 483 171C483 263.232 408.232 338 316 338C223.768 338 149 263.232 149 171C149 78.7684 223.768 4 316 4Z" stroke="#E37C74" stroke-width="8"/>
+      <path d="M517.5 132C589.573 132 648 190.427 648 262.5C648 334.573 589.573 393 517.5 393C445.427 393 387 334.573 387 262.5C387 190.427 445.427 132 517.5 132Z" stroke="#E4827A" stroke-width="8"/>
+      <path d="M144.5 112C222.096 112 285 174.904 285 252.5C285 281.272 276.356 308.013 261.523 330.282C236.337 368.097 193.326 393 144.5 393C66.904 393 4 330.096 4 252.5C4 174.904 66.904 112 144.5 112Z" stroke="#DE5F58" stroke-width="8"/>
+      <path d="M146.727 393C67.9011 393 4 329.609 4 251.412C4 173.215 67.9011 109.824 146.727 109.824C150.811 109.824 154.855 109.994 158.853 110.327C183.5 48.073 244.623 4 316.123 4C396.348 4 463.51 59.4864 480.739 133.885C491.714 130.973 503.25 129.421 515.15 129.421C588.521 129.421 648 188.425 648 261.21C648 333.996 588.521 393 515.15 393" stroke="#DE5F58" stroke-width="8"/>
+      <path d="M144 393H518" stroke="#DE5F58" stroke-width="8"/>
+    </svg>
+    <span>NimbusImage</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#plans">Plans</a></li>
+    <li><a href="https://docs.nimbusimage.com/" target="_blank">Docs</a></li>
+    <li><a href="#downloads">Downloads</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="https://app.nimbusimage.com/" class="nav-cta">Open App</a></li>
+  </ul>
+  <button class="nav-toggle" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-dots">
+    <div class="hero-dot"></div>
+    <div class="hero-dot"></div>
+    <div class="hero-dot"></div>
+    <div class="hero-dot"></div>
+    <div class="hero-dot"></div>
+    <div class="hero-dot"></div>
+  </div>
+  <div class="hero-inner">
+    <div>
+      <a href="https://www.nature.com/articles/s41592-025-02942-6" target="_blank" class="hero-badge fade-up" style="text-decoration:none;">Published in Nature Methods</a>
+      <h1 class="fade-up">Microscopy analysis, <em>reimagined</em> for the cloud</h1>
+      <p class="hero-sub fade-up">Open-source platform that brings powerful segmentation, machine learning, and quantitative analysis to your microscopy data — all from your browser.</p>
+      <div class="hero-actions fade-up">
+        <a href="https://cytopixel-software.outseta.com/auth?widgetMode=register#o-anonymous" class="btn btn-primary">Get started free</a>
+        <a href="https://docs.nimbusimage.com/quick-start" class="btn btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><polygon points="6,3 13,8 6,13" fill="currentColor"/></svg>
+          Quick start guide
+        </a>
+      </div>
+    </div>
+    <div class="hero-visual fade-up">
+      <div class="hero-visual-inner">
+        <div class="hv-toolbar">
+          <div class="hv-dot"></div>
+          <div class="hv-dot"></div>
+          <div class="hv-dot"></div>
+        </div>
+        <img src="assets/Nimbus_screenshot.png" alt="NimbusImage app showing cell segmentation with GFP fluorescence overlay" loading="eager">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PILLARS -->
+<section class="pillars">
+  <div class="pillars-inner stagger">
+    <div class="pillar fade-up">
+      <div class="pillar-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <h3>Cloud-native</h3>
+      <p>Access your work from anywhere. Analyze vast datasets with advanced machine learning — no installation, no local compute limits, just your browser.</p>
+    </div>
+    <div class="pillar fade-up">
+      <div class="pillar-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      </div>
+      <h3>Interactive</h3>
+      <p>Put your hands on your data in completely new ways. Intuitive tools make complex image analysis accessible and — dare we say — enjoyable.</p>
+    </div>
+    <div class="pillar fade-up">
+      <div class="pillar-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v6l3-3"/><path d="M12 8l-3-3"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 14v-2a5 5 0 0110 0v2"/></svg>
+      </div>
+      <h3>Open source</h3>
+      <p>Our code is freely available for scrutiny, modification, and improvement. Run your own server, contribute to the project, or build on top of it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="features-inner">
+    <div class="section-label fade-up">Capabilities</div>
+    <h2 class="section-title fade-up">What can NimbusImage do?</h2>
+    <div class="features-grid stagger">
+      <div class="feature-card fade-up">
+        <div class="feature-number">01</div>
+        <h4>Automatic segmentation</h4>
+        <p>Segment cells, nuclei, and structures with Cellpose, Piscis, and SAM. Fine-tune results with intuitive manual tools.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-number">02</div>
+        <h4>Spot detection</h4>
+        <p>Detect and quantify fluorescent spots with high accuracy — perfect for RNA FISH, protein aggregates, and spatial analysis.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-number">03</div>
+        <h4>Tracking over time</h4>
+        <p>Track cells and objects across time-lapse images. Maintain identity through divisions for lineage tracing and cell cycle analysis.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-number">04</div>
+        <h4>Quantitative measurement</h4>
+        <p>Measure morphology, fluorescence intensity, and spatial relationships. Analyze distributions across experimental conditions.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-number">05</div>
+        <h4>3D &amp; multichannel</h4>
+        <p>Process 3D stacks and multiple fluorescent channels. Investigate colocalization, proximity, and interactions between components.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-number">06</div>
+        <h4>Batch analysis &amp; ML</h4>
+        <p>Process large datasets with automated workflows. Integrate machine learning models or train new ones on your own data.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PUBLICATION -->
+<section class="publication">
+  <a href="https://www.nature.com/articles/s41592-025-02942-6" target="_blank" class="pub-inner fade-up" style="text-decoration:none;color:inherit;">
+    <div class="pub-journal">
+      <div class="pub-journal-name">Nature Methods</div>
+      <div class="pub-journal-tag">Published</div>
+    </div>
+    <div class="pub-content">
+      <h3>Built by scientists, for scientists</h3>
+      <p>NimbusImage was developed over 15 years in the Raj Lab at the University of Pennsylvania in collaboration with Kitware, leaders in open-source scientific software. Read about the platform in Nature Methods.</p>
+    </div>
+  </a>
+</section>
+
+<!-- PLANS -->
+<section class="plans" id="plans">
+  <div class="plans-inner">
+    <div class="section-label fade-up">Plans</div>
+    <h2 class="section-title fade-up">Built for how you work</h2>
+    <p class="section-sub fade-up">Whether you're a solo researcher or running an imaging core, there's a plan that fits.</p>
+    <div class="plans-grid stagger">
+      <div class="plan-card fade-up">
+        <div class="plan-name">Individual</div>
+        <div class="plan-desc">Full access to NimbusImage on your own terms. Monthly or yearly options for independent researchers, postdocs, and students.</div>
+        <a href="https://cytopixel-software.outseta.com/auth?widgetMode=register#o-anonymous" class="plan-cta">Get started</a>
+      </div>
+      <div class="plan-card featured fade-up">
+        <div class="plan-name">Small Group</div>
+        <div class="plan-desc">Per-user discounts on yearly subscriptions for labs and collaborative teams. Ideal for multi-investigator projects.</div>
+        <a href="https://cytopixel-software.outseta.com/auth?widgetMode=register#o-anonymous" class="plan-cta">Get started</a>
+      </div>
+      <div class="plan-card fade-up">
+        <div class="plan-name">Institutional</div>
+        <div class="plan-desc">Flat-fee licensing for research centers based on user count and storage. Scale effortlessly across your entire institution.</div>
+        <a href="mailto:support@cytopixel.com" class="plan-cta">Contact us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOADS -->
+<section class="info-section" id="downloads" style="background: var(--nimbus-light);">
+  <div class="info-inner">
+    <div>
+      <div class="section-label fade-up">Desktop App</div>
+      <div class="section-title fade-up">Work in your browser — or download the app</div>
+      <p class="fade-up">NimbusImage runs in any modern browser, but we also provide a standalone desktop app that isolates your workspace and delivers better performance for intensive sessions.</p>
+      <div class="hero-actions fade-up" style="margin-top:24px;">
+        <a href="https://nimbusimage-app-downloads.s3.us-east-1.amazonaws.com/NimbusImage-1.0.1.Setup.exe" class="btn btn-secondary">Windows</a>
+        <a href="https://nimbusimage-app-downloads.s3.us-east-1.amazonaws.com/NimbusImage-1.0.1-arm64.dmg" class="btn btn-secondary">macOS</a>
+        <a href="https://nimbusimage-app-downloads.s3.us-east-1.amazonaws.com/nimbusimage_1.0.1_amd64.deb" class="btn btn-secondary">Linux</a>
+      </div>
+    </div>
+    <div class="values-list fade-up">
+      <div class="value-item">
+        <div class="value-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div>
+          <h4>Dedicated performance</h4>
+          <p>Isolate NimbusImage from browser tabs for smoother rendering on large datasets.</p>
+        </div>
+      </div>
+      <div class="value-item">
+        <div class="value-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <div>
+          <h4>Cross-platform</h4>
+          <p>Native builds for Windows, macOS (Apple Silicon), and Linux.</p>
+        </div>
+      </div>
+      <div class="value-item">
+        <div class="value-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.5 2v6h-6M2.5 22v-6h6"/><path d="M2.5 11.5a10 10 0 0118.8-4.3"/><path d="M21.5 12.5a10 10 0 01-18.8 4.2"/></svg>
+        </div>
+        <div>
+          <h4>Always in sync</h4>
+          <p>Same cloud account, same data. Switch between browser and app seamlessly.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OPEN SOURCE / ABOUT -->
+<section class="info-section" id="about">
+  <div class="info-inner">
+    <div>
+      <div class="section-label fade-up">Open Source</div>
+      <div class="section-title fade-up">Transparency at the core</div>
+      <p class="fade-up">NimbusImage is built on open-source principles. Our core technology is developed transparently, and the commercial deployment through CytoPixel Software provides a stable, supported experience.</p>
+      <p class="fade-up">We are deeply committed to creating accessible, robust tools that help researchers unlock the full potential of their imaging data. <strong>Our primary goal is to create tools that assist and delight.</strong></p>
+    </div>
+    <div class="values-list fade-up">
+      <div class="value-item">
+        <div class="value-icon" style="padding:4px;">
+          <img src="assets/icons/rajlab-favicon.png" alt="Raj Lab" width="24" height="24" style="border-radius:4px;">
+        </div>
+        <div>
+          <h4><a href="https://rajlab.seas.upenn.edu/" target="_blank" style="color:inherit;text-decoration:none;">The Raj Lab</a></h4>
+          <p>University of Pennsylvania. 15+ years of molecular imaging research powering NimbusImage.</p>
+        </div>
+      </div>
+      <div class="value-item">
+        <div class="value-icon" style="padding:4px;">
+          <img src="assets/icons/kitware-favicon.png" alt="Kitware" width="24" height="24" style="border-radius:4px;">
+        </div>
+        <div>
+          <h4><a href="https://www.kitware.com/" target="_blank" style="color:inherit;text-decoration:none;">Kitware</a></h4>
+          <p>Industry leaders in open-source software. Developers of Girder and ITK.</p>
+        </div>
+      </div>
+      <div class="value-item">
+        <div class="value-icon" style="padding:4px;">
+          <img src="assets/icons/cytopixel-favicon.png" alt="CytoPixel" width="24" height="24" style="border-radius:4px;">
+        </div>
+        <div>
+          <h4><a href="https://www.cytopixel.com/" target="_blank" style="color:inherit;text-decoration:none;">CytoPixel Software</a></h4>
+          <p>Commercial deployment and support for the NimbusImage platform.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <div class="final-cta-inner">
+    <h2 class="fade-up">Ready to see your data differently?</h2>
+    <p class="fade-up">Sign up and start analyzing in minutes. No installation, no credit card.</p>
+    <div class="hero-actions fade-up">
+      <a href="https://cytopixel-software.outseta.com/auth?widgetMode=register#o-anonymous" class="btn btn-primary">Sign up free</a>
+      <a href="https://docs.nimbusimage.com/" class="btn btn-secondary">Read the docs</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-left">
+      <svg viewBox="0 0 652 397" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:auto;height:20px;">
+        <path d="M145 253H529V393H145V253Z" fill="#E68A82"/>
+        <path d="M517.5 132C589.573 132 648 190.427 648 262.5C648 334.573 589.573 393 517.5 393C445.427 393 387 334.573 387 262.5C387 190.427 445.427 132 517.5 132Z" fill="#E68A82" stroke="#E4827A" stroke-width="8"/>
+        <path d="M316 4C408.232 4 483 78.7684 483 171C483 263.232 408.232 338 316 338C223.768 338 149 263.232 149 171C149 78.7684 223.768 4 316 4Z" fill="#E68A82" stroke="#E2756D" stroke-width="8"/>
+        <path d="M144.5 112C222.096 112 285 174.904 285 252.5C285 281.272 276.356 308.013 261.523 330.282C236.337 368.097 193.326 393 144.5 393C66.904 393 4 330.096 4 252.5C4 174.904 66.904 112 144.5 112Z" fill="#E68A82" stroke="#DE5F58" stroke-width="8"/>
+        <path d="M296.5 65C278.487 80.4216 275.786 105.031 275 112.5C261.06 101.512 237.881 100.75 228 100.5" stroke="black" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        <path d="M445.5 319C454.5 320.667 476.5 327.5 492.5 341.5C505.7 323.5 528 315.333 537.5 313.5" stroke="black" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        <path d="M146.727 393C67.9011 393 4 329.609 4 251.412C4 173.215 67.9011 109.824 146.727 109.824C150.811 109.824 154.855 109.994 158.853 110.327C183.5 48.073 244.623 4 316.123 4C396.348 4 463.51 59.4864 480.739 133.885C491.714 130.973 503.25 129.421 515.15 129.421C588.521 129.421 648 188.425 648 261.21C648 333.996 588.521 393 515.15 393" stroke="#DE5F58" stroke-width="8"/>
+        <path d="M144 393H518" stroke="#DE5F58" stroke-width="8"/>
+      </svg>
+      NimbusImage by CytoPixel Software
+    </div>
+    <ul class="footer-links">
+      <li><a href="https://docs.nimbusimage.com/">Documentation</a></li>
+      <li><a href="https://github.com/arjunrajlaboratory/NimbusImage">GitHub</a></li>
+      <li><a href="https://forum.image.sc/">Community</a></li>
+      <li><a href="mailto:support@cytopixel.com">Contact</a></li>
+      <li><a href="#">Terms</a></li>
+      <li><a href="#">Privacy</a></li>
+    </ul>
+  </div>
+</footer>
+
+<!-- COOKIE BANNER -->
+<div class="cookie-banner" id="cookieBanner">
+  <div class="cookie-inner">
+    <div class="cookie-card">
+      <p class="cookie-text">We use cookies to analyze site usage and improve your experience. By continuing, you agree to our <a href="#">Privacy Policy</a>.</p>
+      <div class="cookie-actions">
+        <button class="cookie-btn cookie-btn-decline" id="cookieDecline">Decline</button>
+        <button class="cookie-btn cookie-btn-accept" id="cookieAccept">Accept</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Scroll animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+  // Trigger animations for elements already in viewport on load
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.fade-up').forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        el.classList.add('visible');
+        observer.unobserve(el);
+      }
+    });
+  });
+
+  // Nav scroll effect
+  const nav = document.querySelector('nav');
+  let lastScroll = 0;
+  window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    nav.classList.toggle('scrolled', scrollY > 40);
+    lastScroll = scrollY;
+  }, { passive: true });
+
+  // Mobile nav
+  const toggle = document.querySelector('.nav-toggle');
+  const links = document.querySelector('.nav-links');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      toggle.classList.toggle('active');
+      links.classList.toggle('open');
+    });
+
+    // Close on link click
+    links.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => {
+        toggle.classList.remove('active');
+        links.classList.remove('open');
+      });
+    });
+  }
+
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Cookie banner
+  const cookieBanner = document.getElementById('cookieBanner');
+  const cookieAccept = document.getElementById('cookieAccept');
+  const cookieDecline = document.getElementById('cookieDecline');
+
+  if (!localStorage.getItem('nimbus-cookies')) {
+    setTimeout(() => cookieBanner.classList.add('visible'), 1500);
+  }
+
+  function dismissCookies(accepted) {
+    localStorage.setItem('nimbus-cookies', accepted ? 'accepted' : 'declined');
+    cookieBanner.classList.remove('visible');
+  }
+
+  cookieAccept.addEventListener('click', () => dismissCookies(true));
+  cookieDecline.addEventListener('click', () => dismissCookies(false));
+</script>
+
+</body>
+</html>
